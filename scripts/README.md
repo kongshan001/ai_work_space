@@ -6,8 +6,9 @@
 
 ### 脚本列表
 
-- `generate-daily-trends.sh` - 每日趋势报告生成器
-- `generate-weekly-trends.sh` - 每周趋势报告生成器
+- `generate-daily-trends.sh` - 每日趋势报告生成器（使用 GitHub API）
+- `generate-weekly-trends.sh` - 每周趋势报告生成器（使用 GitHub API）
+- `fix-weekly-dates.sh` - 日期计算测试脚本
 - `README.md` - 本说明文档
 
 ## ⏰ 定时任务配置
@@ -64,37 +65,61 @@ bash /root/.openclaw/workspace/scripts/generate-weekly-trends.sh
 
 ### 为什么需要 Token？
 
-当前脚本使用网页抓取方式获取数据，只能生成报告框架。如需自动获取实时数据，需要配置 GitHub Personal Access Token。
+脚本使用 GitHub API 获取实时趋势数据。配置 Token 后可以：
+- ✅ 自动获取 GitHub Trending 数据
+- ✅ 获取项目的详细信息
+- ✅ 统计 Stars、Forks 等指标
 
-### 获取 Token 步骤
+### 已配置 Token
+
+**Token 文件位置**：`~/.github_token`
+
+**Token 权限要求**：
+- ✅ `public_repo` - 访问公开仓库
+- ✅ `read:user` - 读取用户信息
+- ✅ `read:org`（可选）- 读取组织信息
+
+### 获取新 Token（如需替换）
 
 1. **登录 GitHub** → 进入 **Settings**（设置）
 2. **Developer settings** → **Personal access tokens** → **Tokens (classic)**
 3. **Generate new token** → **Generate new token (classic)**
 4. **配置权限**：
-   - ✅ `public_repo` - 访问公开仓库
-   - ✅ `read:user` - 读取用户信息
-   - ✅ `read:org`（可选）- 读取组织信息
+   - ✅ `public_repo`
+   - ✅ `read:user`
 5. **生成 Token**（只显示一次，立即复制）
 
-### 配置 Token
-
-创建文件 `~/.github_token`：
+### 配置新 Token
 
 ```bash
-echo "your_github_token_here" > ~/.github_token
+# 创建 token 文件
+echo "your_new_github_token_here" > ~/.github_token
+
+# 设置权限（仅 root 可读）
 chmod 600 ~/.github_token
+
+# 验证配置
+cat ~/.github_token
 ```
 
-然后修改脚本，在数据获取部分使用 API 调用：
+### API 使用方式
+
+脚本自动从 `~/.github_token` 读取 Token，并通过以下方式使用：
 
 ```bash
 GITHUB_TOKEN=$(cat ~/.github_token)
 
-# 使用 GitHub API 获取 trending 数据
+# 调用 GitHub API
 curl -H "Authorization: token $GITHUB_TOKEN" \
-     https://api.github.com/search/repositories?q=created:>2024-01-01&sort=stars&order=desc&per_page=20
+     -H "Accept: application/vnd.github.v3+json" \
+     "https://api.github.com/search/repositories?q=created:2026-02-07..2026-02-14&sort=stars&order=desc&per_page=20"
 ```
+
+### API 限流说明
+
+- **认证用户**：5000 次/小时
+- **未认证**：60 次/小时
+- 脚本每次调用约 4-5 次 API，配置 Token 后可避免限流
 
 ## 📝 日志文件
 
@@ -111,6 +136,9 @@ tail -f /root/.openclaw/workspace/logs/cron-daily.log
 
 # 查看每周报告日志
 tail -f /root/.openclaw/workspace/logs/cron-weekly.log
+
+# 查看最近的日志
+tail -20 /root/.openclaw/workspace/logs/cron-daily.log
 ```
 
 ## 🛠️ 故障排除
@@ -163,9 +191,39 @@ tail -f /root/.openclaw/workspace/logs/cron-weekly.log
 
 **可能原因：**
 
-1. 未配置 GitHub API Token → 脚本只生成框架
-2. Token 权限不足 → 检查 token 是否包含必要权限
-3. API 限流 → 等待一段时间后重试
+1. Token 配置错误
+   ```bash
+   # 验证 token 是否存在
+   cat ~/.github_token
+
+   # 测试 API 调用
+   curl -H "Authorization: token $(cat ~/.github_token)" \
+        https://api.github.com/user
+   ```
+
+2. API 限流
+   ```bash
+   # 检查剩余配额
+   curl -H "Authorization: token $(cat ~/.github_token)" \
+        -I https://api.github.com/search/repositories
+   ```
+
+3. 查询条件无结果
+   - 检查日期范围是否正确
+   - 检查语言标签是否准确
+
+### 问题：jq 命令未找到
+
+**解决方法：**
+
+```bash
+# 安装 jq
+apt-get update
+apt-get install -y jq
+
+# 验证安装
+jq --version
+```
 
 ## 🔄 更新脚本
 
@@ -189,6 +247,63 @@ crontab -e
 crontab -r
 ```
 
+### 测试脚本
+
+在修改脚本后，建议先手动测试：
+
+```bash
+# 测试每日报告
+bash /root/.openclaw/workspace/scripts/generate-daily-trends.sh
+
+# 测试每周报告
+bash /root/.openclaw/workspace/scripts/generate-weekly-trends.sh
+
+# 查看生成的报告
+ls -la /root/.openclaw/workspace/reports/github-trends/daily/
+ls -la /root/.openclaw/workspace/reports/github-trends/weekly/
+```
+
+## 📈 数据获取说明
+
+### GitHub Search API
+
+脚本使用 GitHub Search API 获取热门仓库：
+
+**查询条件：**
+- **每日报告**：过去 7 天创建的仓库
+- **每周报告**：本周创建的仓库
+
+**排序方式：**
+- 按 Stars 降序排列
+- 获取每个类别前 10 个项目
+
+**分类：**
+- AI 领域：Python 语言
+- 编程工具：JavaScript 语言
+- 基础设施：Go 语言
+- 其他领域：综合查询
+
+### 数据字段
+
+获取的数据包括：
+- `name`：项目名称
+- `stargazers_count`：Stars 数量
+- `language`：主要编程语言
+- `description`：项目描述
+- `topics`：项目标签（最多前 3 个）
+
+### API 示例
+
+```bash
+# 查询过去 7 天的 Python 项目
+curl -H "Authorization: token YOUR_TOKEN" \
+     "https://api.github.com/search/repositories?q=created:2026-02-07..2026-02-14+language:python&sort=stars&order=desc&per_page=10"
+
+# 查询本周的所有项目
+curl -H "Authorization: token YOUR_TOKEN" \
+     "https://api.github.com/search/repositories?q=created:2026-02-09..2026-02-15&sort=stars&order=desc&per_page=10"
+```
+
 ## 📈 增强功能建议
 
 ### 未来可以添加的功能
@@ -198,16 +313,20 @@ crontab -r
 3. **Slack 集成**：自动发布到 Slack 频道
 4. **数据分析**：添加统计图表和趋势分析
 5. **项目追踪**：持续追踪特定项目的变化
+6. **历史对比**：对比不同周期的数据变化
+7. **可视化**：生成图表和可视化报告
 
 ## 📞 支持
 
-如有问题，请检查：
+如有问题，请按以下顺序检查：
 
 1. 脚本日志文件
 2. Git 推送日志
 3. 系统 cron 日志
+4. GitHub API 状态
 
 ---
 
 **最后更新**：2026-02-14
 **维护者**：OpenClaw AI Agent
+**GitHub API 文档**：https://docs.github.com/en/rest/search

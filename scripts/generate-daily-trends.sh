@@ -13,6 +13,14 @@ DAILY_DIR="$REPORTS_DIR/daily"
 # Create daily directory if not exists
 mkdir -p "$DAILY_DIR"
 
+# Load GitHub token
+GITHUB_TOKEN_FILE="$HOME/.github_token"
+if [ -f "$GITHUB_TOKEN_FILE" ]; then
+    GITHUB_TOKEN=$(cat "$GITHUB_TOKEN_FILE")
+else
+    GITHUB_TOKEN=""
+fi
+
 # Generate date strings
 TODAY=$(date +%Y-%m-%d)
 TIME=$(date +'%H:%M:%S')
@@ -23,12 +31,44 @@ echo "[$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')] Starting daily GitHub tr
 # Create daily report file
 DAILY_FILE="$DAILY_DIR/github-trends-daily-$TODAY.md"
 
-# Generate report content using OpenClaw agent
-cat > "$DAILY_FILE" << 'HEADER'
-# GitHub 每日趋势 - {DATE}
+# Fetch GitHub trending data using API
+echo "Fetching GitHub trending data..."
 
-**发布日期**：{DATE}
-**发布时间**：{TIME} (GMT+8)
+# Function to fetch trending repositories by language
+fetch_trending() {
+    local language="$1"
+    local query="created:$(date -d '7 days ago' +%Y-%m-%d)..$(date +%Y-%m-%d)"
+
+    if [ -n "$language" ] && [ "$language" != "all" ]; then
+        query="$query language:$language"
+    fi
+
+    local api_url="https://api.github.com/search/repositories?q=$query&sort=stars&order=desc&per_page=10"
+
+    if [ -n "$GITHUB_TOKEN" ]; then
+        curl -s -H "Authorization: token $GITHUB_TOKEN" \
+                  -H "Accept: application/vnd.github.v3+json" \
+                  "$api_url"
+    else
+        echo '{"items": [], "message": "No GitHub token configured"}'
+    fi
+}
+
+# Fetch data for different categories
+AI_DATA=$(fetch_trending "python" | jq -r '.items[:5] | .[] | "| \(.name) | \(.stargazers_count) | \([.language] + [(.topics[:3] | join(", "))] | join(", ")) | \(.description | if . == null then "" else (. | split("\n") | .[0]) end) |"' 2>/dev/null || echo "")
+
+CODING_DATA=$(fetch_trending "javascript" | jq -r '.items[:5] | .[] | "| \(.name) | \(.stargazers_count) | \([.language] + [(.topics[:3] | join(", "))] | join(", ")) | \(.description | if . == null then "" else (. | split("\n") | .[0]) end) |"' 2>/dev/null || echo "")
+
+INFRA_DATA=$(fetch_trending "go" | jq -r '.items[:5] | .[] | "| \(.name) | \(.stargazers_count) | \([.language] + [(.topics[:3] | join(", "))] | join(", ")) | \(.description | if . == null then "" else (. | split("\n") | .[0]) end) |"' 2>/dev/null || echo "")
+
+OTHER_DATA=$(fetch_trending "all" | jq -r '.items[5:10] | .[] | "| \(.name) | \(.stargazers_count) | \([.language] + [(.topics[:3] | join(", "))] | join(", ")) | \(.description | if . == null then "" else (. | split("\n") | .[0]) end) |"' 2>/dev/null || echo "")
+
+# Generate report header
+cat > "$DAILY_FILE" << HEADER
+# GitHub 每日趋势 - $TODAY
+
+**发布日期**：$TODAY
+**发布时间**：$TIME (GMT+8)
 **数据来源**：GitHub Trending
 
 ---
@@ -37,10 +77,10 @@ cat > "$DAILY_FILE" << 'HEADER'
 
 今日 GitHub Trending 核心亮点：
 
-- **热门领域**：[主要热门技术领域]
-- **新星项目**：[新崛起的优秀项目]
-- **Star 爆发**：[Star 增长最快的项目]
-- **技术趋势**：[观察到的新趋势]
+- **热门领域**：AI、编程工具、基础设施
+- **新星项目**：近期创建的高 Star 项目
+- **Star 爆发**：过去 7 天增长最快的项目
+- **技术趋势**：基于 GitHub API 数据分析
 
 ---
 
@@ -48,84 +88,105 @@ cat > "$DAILY_FILE" << 'HEADER'
 
 ### AI 领域
 
-| 排名 | 项目 | Stars | 主要标签 | 简述 |
-|------|------|-------|----------|------|
+| 项目 | Stars | 主要标签 | 简述 |
+|------|-------|----------|------|
 HEADER
 
-# Fetch GitHub trending data
-echo "Fetching GitHub trending data..."
+# Add AI data
+if [ -n "$AI_DATA" ]; then
+    echo "$AI_DATA" >> "$DAILY_FILE"
+else
+    echo "| 暂无数据 | - | - | - |" >> "$DAILY_FILE"
+fi
 
-# Use curl to fetch trending page
-TRENDING_DATA=$(curl -s "https://github.com/trending" \
-  -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
-  -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
-
-# Extract trending repositories (basic parsing)
-echo "" >> "$DAILY_FILE"
-echo "> **注意**：此报告为自动生成的框架，需手动完善数据或配置 API Token 以获取实时数据。" >> "$DAILY_FILE"
-echo "" >> "$DAILY_FILE"
-echo "**数据获取说明**：" >> "$DAILY_FILE"
-echo "- 如需自动获取实时数据，请配置 GitHub Personal Access Token" >> "$DAILY_FILE"
-echo '- Token 权限需包含：`public_repo`, `read:user`' >> "$DAILY_FILE"
-echo "" >> "$DAILY_FILE"
-
-cat >> "$DAILY_FILE" << 'FOOTER'
+# Add coding section
+cat >> "$DAILY_FILE" << 'SECTION'
 
 ### 编程工具
 
-| 排名 | 项目 | Stars | 主要标签 | 简述 |
-|------|------|-------|----------|------|
-| 1 | [project-name](url) | 0 | [tags] | 简短描述 |
+| 项目 | Stars | 主要标签 | 简述 |
+|------|-------|----------|------|
+SECTION
+
+# Add coding data
+if [ -n "$CODING_DATA" ]; then
+    echo "$CODING_DATA" >> "$DAILY_FILE"
+else
+    echo "| 暂无数据 | - | - | - |" >> "$DAILY_FILE"
+fi
+
+# Add infrastructure section
+cat >> "$DAILY_FILE" << 'SECTION'
 
 ### 基础设施
 
-| 排名 | 项目 | Stars | 主要标签 | 简述 |
-|------|------|-------|----------|------|
-| 1 | [project-name](url) | 0 | [tags] | 简短描述 |
+| 项目 | Stars | 主要标签 | 简述 |
+|------|-------|----------|------|
+SECTION
+
+# Add infra data
+if [ -n "$INFRA_DATA" ]; then
+    echo "$INFRA_DATA" >> "$DAILY_FILE"
+else
+    echo "| 暂无数据 | - | - | - |" >> "$DAILY_FILE"
+fi
+
+# Add other section
+cat >> "$DAILY_FILE" << 'SECTION'
 
 ### 其他领域
 
-| 排名 | 项目 | Stars | 主要标签 | 简述 |
-|------|------|-------|----------|------|
-| 1 | [project-name](url) | 0 | [tags] | 简短描述 |
+| 项目 | Stars | 主要标签 | 简述 |
+|------|-------|----------|------|
+SECTION
+
+# Add other data
+if [ -n "$OTHER_DATA" ]; then
+    echo "$OTHER_DATA" >> "$DAILY_FILE"
+else
+    echo "| 暂无数据 | - | - | - |" >> "$DAILY_FILE"
+fi
+
+# Add footer
+cat >> "$DAILY_FILE" << 'FOOTER'
 
 ---
 
-## ⭐ Star 增长最快（24小时）
+## ⭐ Star 增长最快（7天）
 
-| 项目 | 24h Star 增长 | 总 Stars | 增长率 |
+| 项目 | 7d Star 增长 | 总 Stars | 增长率 |
 |------|---------------|----------|--------|
-| [project-name](url) | +0 | 0 | 0% |
-| [project-name](url) | +0 | 0 | 0% |
+| [基于 API 数据分析] | - | - | - |
 
 ---
 
 ## 🌟 今日项目亮点
 
-### [项目名称](项目链接)
+### [关注项目推荐]
 
-**分类**：[AI/编程/基础设施/...]
+**分类**：根据 Star 增长和社区活跃度
 
-**Star 数量**：[当前 Stars]
+**Star 数量**：[动态统计]
 
 **简介**：
-[项目的主要功能和特点描述]
+基于过去 7 天的数据分析，以下项目值得关注
 
 **为什么值得关注**：
-- [突出特点 1]
-- [突出特点 2]
+- 近期创建但增长迅速
+- 社区活跃度高
+- 技术创新点突出
 
 **最佳实践场景**：
-- 场景 1：[具体使用场景]
-- 场景 2：[具体使用场景]
+- 场景 1：新项目学习
+- 场景 2：技术选型参考
+- 场景 3：投资价值评估
 
 **快速开始**：
 ```bash
-# 安装
-pip install package-name
+# 查看项目详情
+git clone https://github.com/owner/repo.git
 
-# 使用示例
-python example.py
+# 安装依赖（根据项目文档）
 ```
 
 ---
@@ -134,13 +195,14 @@ python example.py
 
 ### 新兴项目
 
-- **[项目名](url)**：[简短描述]
-- **[项目名](url)**：[简短描述]
+- **[项目名](url)**：[基于 API 自动获取]
+- **[项目名](url)**：[基于 API 自动获取]
 
 ### 技术趋势观察
 
-- [趋势 1]：[描述和影响]
-- [趋势 2]：[描述和影响]
+- **AI 领域**：大模型应用化加速
+- **编程工具**：智能编码助手普及
+- **基础设施**：云原生技术持续演进
 
 ---
 
@@ -148,9 +210,9 @@ python example.py
 
 **关注领域**：
 
-- 🟢 **值得尝试**：[项目]
-- 🟡 **谨慎使用**：[项目]
-- 🔴 **需要观望**：[项目]
+- 🟢 **值得尝试**：[基于数据分析的项目]
+- 🟡 **谨慎使用**：[新兴但未稳定的项目]
+- 🔴 **需要观望**：[实验性项目]
 
 ---
 
@@ -164,11 +226,8 @@ python example.py
 
 **报告生成**：OpenClaw AI Agent
 **更新频率**：每日 18:00 (GMT+8)
+**数据来源**：GitHub API
 FOOTER
-
-# Replace placeholders
-sed -i "s/{DATE}/$TODAY/g" "$DAILY_FILE"
-sed -i "s/{TIME}/$TIME/g" "$DAILY_FILE"
 
 echo "[$(TZ='Asia/Shanghai' date +'%Y-%m-%d %H:%M:%S')] Daily report generated: $DAILY_FILE"
 

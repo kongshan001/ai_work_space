@@ -1,7 +1,7 @@
 # GitHub 每日趋势 - 2026-02-14
 
 **发布日期**：2026-02-14
-**发布时间**：13:16:56 (GMT+8)
+**发布时间**：18:00:01 (GMT+8)
 **数据来源**：GitHub Trending
 
 ---
@@ -41,11 +41,11 @@
 
 | 项目 | Stars | 主要标签 | 简述 |
 |------|-------|----------|------|
-| clawra | 1294 | TypeScript,  | Clawra - Openclaw as your girlfriend |
-| tinyclaw | 1225 | TypeScript,  | TinyClaw is a team of personal agents that collaborate with each other |
-| textream | 1206 | Swift, macos, macos-app, streaming | Textream is a free macOS teleprompter app for streamers, interviewers, and presenters. It highlights your script in real-time as you speak, displayed in a beautiful Dynamic Island overlay. |
-| Kaku | 1075 | Rust,  | 🎃 A fast, out-of-the-box terminal built for AI coding. |
-| discord-id-bypass-tool | 1036 | HTML,  | A verified tool that works on any potato computer that will let you bypass discord verification |
+| clawra | 1312 | TypeScript,  | Clawra - Openclaw as your girlfriend |
+| tinyclaw | 1246 | TypeScript,  | TinyClaw is a team of personal agents that collaborate with each other |
+| textream | 1215 | Swift, macos, macos-app, streaming | Textream is a free macOS teleprompter app for streamers, interviewers, and presenters. It highlights your script in real-time as you speak, displayed in a beautiful Dynamic Island overlay. |
+| Kaku | 1117 | Rust,  | 🎃 A fast, out-of-the-box terminal built for AI coding. |
+| discord-id-bypass-tool | 1049 | HTML,  | A verified tool that works on any potato computer that will let you bypass discord verification |
 
 ---
 

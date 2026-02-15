@@ -1,7 +1,7 @@
 # GitHub 每周趋势 - 2026 第 07 周
 
-**发布日期**：2026-02-14
-**发布时间**：13:19:18 (GMT+8)
+**发布日期**：2026-02-15
+**发布时间**：20:00:01 (GMT+8)
 **统计周期**：2026-02-09 至 2026-02-15
 
 ---
@@ -41,11 +41,11 @@
 
 | 项目 | 本周 Stars | 总 Stars | 主要标签 | 简介 |
 |------|-----------|----------|----------|------|
-| GLM-5 | 680 | , agentic-ai, coding, glm | GLM-5: From Vibe Coding to Agentic Engineering |
-| Agmente | 403 | Swift,  | iOS client for coding agents via ACP |
-| devops-interviews | 391 | ,  | DevOps Interview Questions |
-| claw-compactor | 379 | Python,  | 🦞 Claw Compactor — The 98% Crusher. Cut your AI agent token spend in half with 5 layered compression techniques. |
-| moyin-creator | 327 | TypeScript,  | AI 影视生产级工具 | 支持 Seedance 2.0 | 剧本到成片全流程批量化 | AI-powered film production tool with Seedance 2.0 support |
+| greenlight | 882 | Go,  | Pre-submission compliance scanner for the Apple App Store |
+| GLM-5 | 841 | , agentic-ai, coding, glm | GLM-5: From Vibe Coding to Agentic Engineering |
+| sql-tap | 646 | Go,  | Watch SQL traffic in real-time with a TUI |
+| clawlet | 566 | Go, ai, assistant, personal | Ultra-Lightweight&Efficient Personal AI Assistant |
+| FastCode | 543 | Python,  | FastCode: Accelerating and Streamlining Your Code Understanding |
 
 ---
 
